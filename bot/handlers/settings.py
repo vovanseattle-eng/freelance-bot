@@ -24,11 +24,18 @@ async def cb_settings(call: CallbackQuery) -> None:
             f"Выберите IT категории, по которым хотите мгновенно получать новые заказы:"
         )
         if call.message:
-            await call.message.edit_text(
-                text,
-                reply_markup=settings_kb(cats, notif_enabled),
-                parse_mode="HTML",
-            )
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(
+                    caption=text,
+                    reply_markup=settings_kb(cats, notif_enabled),
+                    parse_mode="HTML",
+                )
+            else:
+                await call.message.edit_text(
+                    text,
+                    reply_markup=settings_kb(cats, notif_enabled),
+                    parse_mode="HTML",
+                )
     finally:
         await call.answer()
 
@@ -45,11 +52,18 @@ async def cb_toggle_notif(call: CallbackQuery) -> None:
             f"Статус уведомлений обновлен."
         )
         if call.message:
-            await call.message.edit_text(
-                text,
-                reply_markup=settings_kb(cats, new_state),
-                parse_mode="HTML",
-            )
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(
+                    caption=text,
+                    reply_markup=settings_kb(cats, new_state),
+                    parse_mode="HTML",
+                )
+            else:
+                await call.message.edit_text(
+                    text,
+                    reply_markup=settings_kb(cats, new_state),
+                    parse_mode="HTML",
+                )
     finally:
         await call.answer("Сохранено")
 
@@ -74,10 +88,17 @@ async def cb_toggle_cat(call: CallbackQuery) -> None:
             f"Список активных направлений обновлен."
         )
         if call.message:
-            await call.message.edit_text(
-                text,
-                reply_markup=settings_kb(list(cats), notif_enabled),
-                parse_mode="HTML",
-            )
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(
+                    caption=text,
+                    reply_markup=settings_kb(list(cats), notif_enabled),
+                    parse_mode="HTML",
+                )
+            else:
+                await call.message.edit_text(
+                    text,
+                    reply_markup=settings_kb(list(cats), notif_enabled),
+                    parse_mode="HTML",
+                )
     finally:
         await call.answer("Обновлено")

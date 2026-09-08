@@ -17,7 +17,10 @@ async def cb_feed_menu(call: CallbackQuery) -> None:
             f"Выберите интересующее вас IT направление:"
         )
         if call.message:
-            await call.message.edit_text(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(caption=text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+            else:
+                await call.message.edit_text(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
     finally:
         await call.answer()
 
@@ -39,7 +42,10 @@ async def cb_feed_category(call: CallbackQuery) -> None:
                 f"Сборщик проверяет источники каждые 60 секунд."
             )
             if call.message:
-                await call.message.edit_text(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+                if call.message.animation or call.message.photo or call.message.video:
+                    await call.message.edit_caption(caption=text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+                else:
+                    await call.message.edit_text(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
             return
 
         offset = max(0, min(offset, total - 1))
@@ -73,11 +79,23 @@ async def cb_feed_category(call: CallbackQuery) -> None:
 
         kb = order_card_kb(order["link"], category, offset, total, contact=contact)
         if call.message:
-            await call.message.edit_text(
-                text,
-                reply_markup=kb,
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-            )
+            if call.message.animation or call.message.photo or call.message.video:
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                await call.message.answer(
+                    text,
+                    reply_markup=kb,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
+            else:
+                await call.message.edit_text(
+                    text,
+                    reply_markup=kb,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
     finally:
         await call.answer()

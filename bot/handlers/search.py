@@ -22,7 +22,10 @@ async def cb_search_prompt(call: CallbackQuery, state: FSMContext) -> None:
             f"Введите поисковый запрос (например: <code>Python</code>, <code>Figma</code>, <code>Reels</code>, <code>React</code>):"
         )
         if call.message:
-            await call.message.edit_text(text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(caption=text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
+            else:
+                await call.message.edit_text(text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
     finally:
         await call.answer()
 
