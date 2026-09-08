@@ -12,6 +12,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
+from aiogram.types import BotCommand, BotCommandScopeDefault, MenuButtonCommands
 
 import config
 from database.db import init_db
@@ -65,6 +66,39 @@ async def orders_collector_worker(bot: Bot) -> None:
             logger.error(f"Ошибка в цикле сборщика: {e}")
         await asyncio.sleep(config.RSS_POLL_INTERVAL)
 
+async def set_bot_commands(bot: Bot) -> None:
+    """Устанавливает системные команды и кнопку Меню у поля ввода."""
+    commands = [
+        BotCommand(command="start", description="Главное меню"),
+        BotCommand(command="search", description="Поиск IT-заказов"),
+        BotCommand(command="feed", description="Лента по категориям"),
+        BotCommand(command="settings", description="Фильтры и уведомления"),
+        BotCommand(command="stats", description="Статистика базы"),
+    ]
+    try:
+        await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+        await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+    except Exception as e:
+        logger.warning(f"Не удалось установить команды бота: {e}")
+
+async def start_health_server() -> None:
+    port_str = config.os.getenv("PORT")
+    if not port_str:
+        return
+    try:
+        from aiohttp import web
+        port = int(port_str)
+        app = web.Application()
+        app.router.add_get("/", lambda r: web.Response(text="Freelance Bot is running!"))
+        app.router.add_get("/health", lambda r: web.Response(text="OK"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+        logger.info(f"Render health-check HTTP сервер запущен на порту {port}")
+    except Exception as e:
+        logger.warning(f"Не удалось запустить health-check сервер: {e}")
+
 async def main() -> None:
     logger.info("Инициализация базы данных...")
     await init_db()
@@ -72,6 +106,8 @@ async def main() -> None:
     if not config.BOT_TOKEN:
         logger.error("BOT_TOKEN не указан в .env! Завершение работы.")
         return
+
+    await start_health_server()
 
     dp = Dispatcher()
     dp.include_router(start.router)
@@ -106,6 +142,8 @@ async def main() -> None:
             session=session,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
+
+        await set_bot_commands(bot)
 
         collector = asyncio.create_task(orders_collector_worker(bot))
         try:

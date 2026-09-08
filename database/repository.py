@@ -1,3 +1,4 @@
+import re
 from typing import Optional, List, Dict, Any
 from database.db import get_connection
 
@@ -66,14 +67,41 @@ async def get_order_by_id(order_id: int) -> Optional[Dict[str, Any]]:
         return await cursor.fetchone()
 
 async def search_orders(query: str, limit: int = 10) -> List[Dict[str, Any]]:
-    pattern = f"%{query.strip()}%"
+    clean_query = query.strip().lower()
+    if not clean_query:
+        return []
+
+    words = [w for w in re.findall(r"[\w\d]+", clean_query) if len(w) >= 2]
+
     async with get_connection() as db:
         db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
         placeholders = ",".join("?" for _ in VALID_IT_CATEGORIES)
+
+        if words:
+            word_clauses = " AND ".join(
+                ["(py_lower(title) LIKE ? OR py_lower(description) LIKE ?)" for _ in words]
+            )
+            params = []
+            for w in words:
+                pat = f"%{w}%"
+                params.extend([pat, pat])
+
+            sql = f"""
+            SELECT * FROM orders 
+            WHERE ({word_clauses})
+              AND category IN ({placeholders})
+            ORDER BY id DESC LIMIT ?
+            """
+            cursor = await db.execute(sql, (*params, *VALID_IT_CATEGORIES, limit))
+            results = await cursor.fetchall()
+            if results:
+                return results
+
+        pattern = f"%{clean_query}%"
         cursor = await db.execute(
             f"""
             SELECT * FROM orders 
-            WHERE (title LIKE ? OR description LIKE ?)
+            WHERE (py_lower(title) LIKE ? OR py_lower(description) LIKE ?)
               AND category IN ({placeholders})
             ORDER BY id DESC LIMIT ?
             """,

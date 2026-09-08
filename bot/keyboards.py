@@ -21,7 +21,7 @@ CATEGORY_EMOJIS = {
 
 def main_menu_kb() -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
-    b.button(text="Лента заказов", callback_data="feed_menu", icon_custom_emoji_id=E.FILE)
+    b.button(text="Лента заказов", callback_data="feed_menu", icon_custom_emoji_id=E.FIRE)
     b.button(text="Поиск", callback_data="search_prompt", icon_custom_emoji_id=E.SEARCH)
     b.button(text="Уведомления", callback_data="settings", icon_custom_emoji_id=E.BELL)
     b.button(text="Статистика", callback_data="stats", icon_custom_emoji_id=E.STATS)

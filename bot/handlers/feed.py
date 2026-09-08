@@ -1,6 +1,7 @@
 import html
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InputMediaAnimation, FSInputFile
+from aiogram.types import Message, CallbackQuery, InputMediaAnimation, FSInputFile
+from aiogram.filters import Command
 
 from bot.emoji import E, em, title
 from bot.keyboards import feed_categories_kb, order_card_kb, CATEGORY_NAMES
@@ -9,6 +10,26 @@ from database import repository
 import config
 
 router = Router()
+
+@router.message(Command("feed"))
+async def cmd_feed(message: Message) -> None:
+    text = (
+        f"{title(E.FILE, 'Каталог вакансий')}\n\n"
+        f"Выберите интересующее вас IT направление:"
+    )
+    catalog_id = config.get_cached_file_id("catalog")
+    if catalog_id:
+        try:
+            await message.answer_animation(
+                animation=catalog_id,
+                caption=text,
+                reply_markup=feed_categories_kb(),
+                parse_mode="HTML",
+            )
+            return
+        except Exception:
+            pass
+    await message.answer(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
 
 @router.callback_query(F.data == "feed_menu")
 async def cb_feed_menu(call: CallbackQuery) -> None:

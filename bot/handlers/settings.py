@@ -1,5 +1,6 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InputMediaAnimation, FSInputFile
+from aiogram.types import Message, CallbackQuery, InputMediaAnimation, FSInputFile
+from aiogram.filters import Command
 
 from bot.emoji import E, title
 from bot.keyboards import settings_kb
@@ -7,6 +8,35 @@ from database import repository
 import config
 
 router = Router()
+
+@router.message(Command("settings"))
+async def cmd_settings(message: Message) -> None:
+    user = await repository.get_user(message.from_user.id)
+    if not user:
+        await repository.upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+        user = await repository.get_user(message.from_user.id)
+
+    raw_cats = (user.get("categories") or "") if user else ""
+    cats = [c.strip() for c in raw_cats.split(",") if c.strip()]
+    notif_enabled = bool(user.get("notifications_enabled", 1)) if user else True
+
+    text = (
+        f"{title(E.BELL, 'Настройка уведомлений')}\n\n"
+        f"Выберите IT категории, по которым хотите мгновенно получать новые заказы:"
+    )
+    settings_id = config.get_cached_file_id("settings")
+    if settings_id:
+        try:
+            await message.answer_animation(
+                animation=settings_id,
+                caption=text,
+                reply_markup=settings_kb(cats, notif_enabled),
+                parse_mode="HTML",
+            )
+            return
+        except Exception:
+            pass
+    await message.answer(text, reply_markup=settings_kb(cats, notif_enabled), parse_mode="HTML")
 
 @router.callback_query(F.data == "settings")
 async def cb_settings(call: CallbackQuery) -> None:

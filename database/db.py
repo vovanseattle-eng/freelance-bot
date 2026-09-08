@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import aiosqlite
 from config import DATABASE_PATH
 
@@ -39,6 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 
 async def init_db() -> None:
     async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.create_function("py_lower", 1, lambda s: s.lower() if s else "")
         await db.executescript(INIT_SQL)
         try:
             await db.execute("ALTER TABLE orders ADD COLUMN contact TEXT")
@@ -46,5 +48,8 @@ async def init_db() -> None:
             pass
         await db.commit()
 
-def get_connection():
-    return aiosqlite.connect(DATABASE_PATH)
+@asynccontextmanager
+async def get_connection():
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.create_function("py_lower", 1, lambda s: s.lower() if s else "")
+        yield db
