@@ -1,9 +1,10 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaAnimation, FSInputFile
 
 from bot.emoji import E, title
 from bot.keyboards import settings_kb
 from database import repository
+import config
 
 router = Router()
 
@@ -23,9 +24,33 @@ async def cb_settings(call: CallbackQuery) -> None:
             f"{title(E.BELL, 'Настройка уведомлений')}\n\n"
             f"Выберите IT категории, по которым хотите мгновенно получать новые заказы:"
         )
-        if call.message:
-            if call.message.animation or call.message.photo or call.message.video:
-                await call.message.edit_caption(
+        if not call.message:
+            return
+
+        settings_id = config.get_cached_file_id("settings")
+        if call.message.animation or call.message.photo or call.message.video:
+            if settings_id:
+                try:
+                    await call.message.edit_media(
+                        media=InputMediaAnimation(media=settings_id, caption=text, parse_mode="HTML"),
+                        reply_markup=settings_kb(cats, notif_enabled),
+                    )
+                    return
+                except Exception:
+                    pass
+            await call.message.edit_caption(
+                caption=text,
+                reply_markup=settings_kb(cats, notif_enabled),
+                parse_mode="HTML",
+            )
+        else:
+            if settings_id:
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                await call.message.answer_animation(
+                    animation=settings_id,
                     caption=text,
                     reply_markup=settings_kb(cats, notif_enabled),
                     parse_mode="HTML",

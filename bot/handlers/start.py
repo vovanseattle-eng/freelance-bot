@@ -118,9 +118,33 @@ async def cb_stats(call: CallbackQuery) -> None:
             f"{em(E.WRITE)} Копирайтинг: <b>{copy_count}</b>\n"
             f"{em(E.MEDIA)} Видеомонтаж: <b>{video_count}</b>"
         )
-        if call.message:
-            if call.message.animation or call.message.photo or call.message.video:
-                await call.message.edit_caption(caption=text, reply_markup=main_menu_kb(), parse_mode="HTML")
+        if not call.message:
+            return
+
+        stats_id = config.get_cached_file_id("stats")
+        if call.message.animation or call.message.photo or call.message.video:
+            if stats_id:
+                try:
+                    await call.message.edit_media(
+                        media=InputMediaAnimation(media=stats_id, caption=text, parse_mode="HTML"),
+                        reply_markup=main_menu_kb(),
+                    )
+                    return
+                except Exception:
+                    pass
+            await call.message.edit_caption(caption=text, reply_markup=main_menu_kb(), parse_mode="HTML")
+        else:
+            if stats_id:
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                await call.message.answer_animation(
+                    animation=stats_id,
+                    caption=text,
+                    reply_markup=main_menu_kb(),
+                    parse_mode="HTML",
+                )
             else:
                 await call.message.edit_text(text, reply_markup=main_menu_kb(), parse_mode="HTML")
     finally:

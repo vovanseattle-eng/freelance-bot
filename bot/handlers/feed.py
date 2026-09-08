@@ -1,11 +1,12 @@
 import html
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaAnimation, FSInputFile
 
 from bot.emoji import E, em, title
 from bot.keyboards import feed_categories_kb, order_card_kb, CATEGORY_NAMES
 from parsers.deduplicator import safe_truncate_html
 from database import repository
+import config
 
 router = Router()
 
@@ -16,9 +17,33 @@ async def cb_feed_menu(call: CallbackQuery) -> None:
             f"{title(E.FILE, 'Каталог вакансий')}\n\n"
             f"Выберите интересующее вас IT направление:"
         )
-        if call.message:
-            if call.message.animation or call.message.photo or call.message.video:
-                await call.message.edit_caption(caption=text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+        if not call.message:
+            return
+
+        catalog_id = config.get_cached_file_id("catalog")
+        if call.message.animation or call.message.photo or call.message.video:
+            if catalog_id:
+                try:
+                    await call.message.edit_media(
+                        media=InputMediaAnimation(media=catalog_id, caption=text, parse_mode="HTML"),
+                        reply_markup=feed_categories_kb(),
+                    )
+                    return
+                except Exception:
+                    pass
+            await call.message.edit_caption(caption=text, reply_markup=feed_categories_kb(), parse_mode="HTML")
+        else:
+            if catalog_id:
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                await call.message.answer_animation(
+                    animation=catalog_id,
+                    caption=text,
+                    reply_markup=feed_categories_kb(),
+                    parse_mode="HTML",
+                )
             else:
                 await call.message.edit_text(text, reply_markup=feed_categories_kb(), parse_mode="HTML")
     finally:

@@ -1,4 +1,8 @@
 {
   "menu": "CgACAgIAAxkDAAIBv2qgDGm-FWJA_2CNz_reMqRRbN7AAAJnpgACnPkAAUlmtcFIiPhjRT0E",
-  "notification": "CgACAgIAAxkDAAIBwmqgDGoZMcc79qjjFTSQ3rEpnV2GAAJopgACnPkAAUlv_iCqDE5Jmj0E"
+  "notification": "CgACAgIAAxkDAAIBwmqgDGoZMcc79qjjFTSQ3rEpnV2GAAJopgACnPkAAUlv_iCqDE5Jmj0E",
+  "catalog": "CgACAgIAAxkDAAIB0GqgETzWYBWxswi7fyike7ueFUrSAAKypgACnPkAAUndTfE0v2miMD0E",
+  "search": "CgACAgIAAxkDAAIB0WqgET3xE4LZimJP_mvRS8SEqZXhAAKzpgACnPkAAUmOuPKltT9OtT0E",
+  "settings": "CgACAgIAAxkDAAIB0mqgET3OnkLfedrR-mr3fOqmQvahAAK0pgACnPkAAUnG79v6TtgNpj0E",
+  "stats": "CgACAgIAAxkDAAIB02qgET6OqIA3XiPawMIXaAnpYEJNAAK1pgACnPkAAUnLFo6c31tSCD0E"
 }

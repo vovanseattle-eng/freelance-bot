@@ -21,6 +21,10 @@ TELEGRAM_PROXY: str = os.getenv("TELEGRAM_PROXY", "").strip()
 ASSETS_DIR: Path = BASE_DIR / "assets"
 MENU_GIF_PATH: Path = ASSETS_DIR / "menu.gif"
 NOTIF_GIF_PATH: Path = ASSETS_DIR / "notification.gif"
+CATALOG_GIF_PATH: Path = ASSETS_DIR / "catalog.gif"
+SEARCH_GIF_PATH: Path = ASSETS_DIR / "search.gif"
+SETTINGS_GIF_PATH: Path = ASSETS_DIR / "settings.gif"
+STATS_GIF_PATH: Path = ASSETS_DIR / "stats.gif"
 CACHE_FILE: Path = ASSETS_DIR / "file_ids.json"
 
 def get_cached_file_id(key: str) -> str | None:

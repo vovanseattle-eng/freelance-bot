@@ -1,12 +1,13 @@
 import html
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InputMediaAnimation, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from bot.emoji import E, em, title
 from bot.keyboards import back_to_menu_kb, push_order_kb
 from database import repository
+import config
 
 router = Router()
 
@@ -21,9 +22,33 @@ async def cb_search_prompt(call: CallbackQuery, state: FSMContext) -> None:
             f"{title(E.EDIT, 'Поиск IT-заказов')}\n\n"
             f"Введите поисковый запрос (например: <code>Python</code>, <code>Figma</code>, <code>Reels</code>, <code>React</code>):"
         )
-        if call.message:
-            if call.message.animation or call.message.photo or call.message.video:
-                await call.message.edit_caption(caption=text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
+        if not call.message:
+            return
+
+        search_id = config.get_cached_file_id("search")
+        if call.message.animation or call.message.photo or call.message.video:
+            if search_id:
+                try:
+                    await call.message.edit_media(
+                        media=InputMediaAnimation(media=search_id, caption=text, parse_mode="HTML"),
+                        reply_markup=back_to_menu_kb(),
+                    )
+                    return
+                except Exception:
+                    pass
+            await call.message.edit_caption(caption=text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
+        else:
+            if search_id:
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                await call.message.answer_animation(
+                    animation=search_id,
+                    caption=text,
+                    reply_markup=back_to_menu_kb(),
+                    parse_mode="HTML",
+                )
             else:
                 await call.message.edit_text(text, reply_markup=back_to_menu_kb(), parse_mode="HTML")
     finally:
