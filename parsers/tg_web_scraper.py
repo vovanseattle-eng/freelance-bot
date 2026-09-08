@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from typing import List
 import aiohttp
 from bs4 import BeautifulSoup
@@ -78,6 +79,66 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
+def extract_post_data(text_el) -> tuple[str, str, str]:
+    """Преобразует сырой HTML поста в красивый текст с сохранением ссылок и структуры."""
+    el = BeautifulSoup(str(text_el), "html.parser").select_one(".tgme_widget_message_text")
+    if not el:
+        return "", "", ""
+
+    # Заменяем <br> на нормальный перенос строки
+    for br in el.find_all("br"):
+        br.replace_with("\n")
+
+    # Обрабатываем ссылки: сохраняем внешние кликабельные href
+    for a in el.find_all("a"):
+        href = a.get("href", "")
+        text = a.get_text()
+        if href.startswith("http"):
+            a.attrs = {"href": href}
+        else:
+            # Ссылки поиска по тегам (?q=%23...) заменяем на обычный текст
+            a.replace_with(text)
+
+    # Оставляем только безопасные теги форматирования Telegram: a, b, i, code
+    for tag in el.find_all(True):
+        if tag.name not in ["a", "b", "strong", "i", "em", "code"]:
+            tag.unwrap()
+        elif tag.name in ["b", "strong"]:
+            tag.name = "b"
+            tag.attrs = {}
+        elif tag.name in ["i", "em"]:
+            tag.name = "i"
+            tag.attrs = {}
+        elif tag.name == "code":
+            tag.attrs = {}
+
+    plain_text = el.get_text().strip()
+    raw_lines = [l.strip() for l in plain_text.split("\n") if l.strip()]
+
+    # Умный заголовок: ищем первую строку с реальным текстом (пропускаем смайлики типа ⛏, 🔹, ⚡)
+    title = ""
+    for l in raw_lines:
+        clean_l = re.sub(r"[^\w\s]", "", l).strip()
+        if len(clean_l) >= 4:
+            title = l[:100]
+            break
+    if not title and raw_lines:
+        title = raw_lines[0][:100]
+
+    # Красивый HTML-текст для отображения в Telegram
+    formatted_html = el.decode_contents().strip()
+    # Склеиваем оторванную пунктуацию (когда точка или запятая на новой строке)
+    formatted_html = re.sub(r"\n\s*([.,!?:;])", r"\1", formatted_html)
+    # Нормализуем пустые строки (не больше двух подряд)
+    formatted_html = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", formatted_html)
+
+    # Если в начале описания дублируется заголовок — убираем дубль
+    if title:
+        pattern = re.escape(title)
+        formatted_html = re.sub(r"^" + pattern + r"\s*", "", formatted_html, flags=re.IGNORECASE).strip()
+
+    return title, plain_text, formatted_html
+
 async def fetch_channel_posts(session: aiohttp.ClientSession, channel: str) -> List[ParsedOrder]:
     orders: List[ParsedOrder] = []
     url = f"https://t.me/s/{channel}"
@@ -100,15 +161,15 @@ async def fetch_channel_posts(session: aiohttp.ClientSession, channel: str) -> L
         if not text_el:
             continue
 
-        raw_text = text_el.get_text(separator="\n").strip()
-        if len(raw_text) < 30:
+        title, plain_text, formatted_body = extract_post_data(text_el)
+        if len(plain_text) < 30:
             continue
 
-        lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
-        title = lines[0][:100] if lines else f"Заказ из @{channel}"
+        if not title:
+            title = f"Заказ из @{channel}"
 
         # Строгая фильтрация: только IT / Digital
-        category = classify_text(title, raw_text)
+        category = classify_text(title, plain_text)
         if not category:
             continue
 
@@ -116,16 +177,17 @@ async def fetch_channel_posts(session: aiohttp.ClientSession, channel: str) -> L
         post_attr = node.get("data-post", "") if node else ""
         link = f"https://t.me/{post_attr}" if post_attr else f"https://t.me/{channel}"
 
-        budget = extract_budget(raw_text)
-        contact = extract_tg_contact(raw_text)
-        content_hash = generate_hash(title, raw_text)
+        budget = extract_budget(plain_text)
+        contact = extract_tg_contact(plain_text)
+        content_hash = generate_hash(title, plain_text)
 
+        # Сохраняем красивое форматированное тело поста с ссылками
         orders.append(
             ParsedOrder(
                 source=f"TG: @{channel}",
                 title=title,
                 link=link,
-                description=raw_text[:800],
+                description=formatted_body,
                 budget=budget,
                 category=category,
                 content_hash=content_hash,

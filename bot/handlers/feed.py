@@ -4,6 +4,7 @@ from aiogram.types import CallbackQuery
 
 from bot.emoji import E, em, title
 from bot.keyboards import feed_categories_kb, order_card_kb, CATEGORY_NAMES
+from parsers.deduplicator import safe_truncate_html
 from database import repository
 
 router = Router()
@@ -50,7 +51,6 @@ async def cb_feed_category(call: CallbackQuery) -> None:
         order = orders[0]
         cat_label = CATEGORY_NAMES.get(order["category"], "IT & Freelance")
         safe_title = html.escape(order["title"])
-        safe_desc = html.escape((order["description"] or "")[:550])
         safe_budget = html.escape(order["budget"] or "По договоренности")
         safe_source = html.escape(order["source"])
         contact = order.get("contact")
@@ -60,13 +60,15 @@ async def cb_feed_category(call: CallbackQuery) -> None:
             clean_contact = contact.lstrip("@")
             contact_text = f"\n{em(E.PROFILE)} <b>Контакт:</b> @{clean_contact}"
 
+        desc_html = safe_truncate_html(order["description"] or "", max_len=750)
+
         text = (
             f"{title(E.JOB, cat_label)}  •  {offset + 1} / {total}\n\n"
             f"<b>{safe_title}</b>\n\n"
             f"{em(E.COIN)} <b>Оплата:</b> {safe_budget}\n"
-            f"{em(E.LINK)} <b>Источник:</b> {safe_source}"
+            f"{em(E.LINK)} <b>Источник:</b> <a href=\"{order['link']}\">{safe_source}</a>"
             f"{contact_text}\n\n"
-            f"{safe_desc}\n"
+            f"{desc_html}\n"
         )
 
         kb = order_card_kb(order["link"], category, offset, total, contact=contact)

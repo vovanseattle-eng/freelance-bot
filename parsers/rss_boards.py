@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from typing import List
 import aiohttp
 import feedparser
@@ -45,6 +46,11 @@ async def fetch_single_feed(session: aiohttp.ClientSession, feed_info: dict) -> 
         if not title or not link:
             continue
 
+        # Убираем дублирование заголовка в начале описания
+        if title:
+            pattern = re.escape(title)
+            description = re.sub(r"^" + pattern + r"\s*", "", description, flags=re.IGNORECASE).strip()
+
         # Строгая фильтрация только по IT-направлениям
         category = classify_text(title, description)
         if not category:
@@ -59,7 +65,7 @@ async def fetch_single_feed(session: aiohttp.ClientSession, feed_info: dict) -> 
                 source=source,
                 title=title,
                 link=link,
-                description=description[:800],
+                description=description,
                 budget=budget,
                 category=category,
                 content_hash=content_hash,
