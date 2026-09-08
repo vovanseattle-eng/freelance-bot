@@ -11,8 +11,11 @@ import config
 
 logger = logging.getLogger(__name__)
 
+_cached_notif_file_id = None
+
 async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> None:
     """Рассылает карточку нового заказа подписчикам категории с анимированной GIF-шапкой."""
+    global _cached_notif_file_id
     user_ids = await repository.get_subscribed_users(order.category)
     if not user_ids:
         return
@@ -48,13 +51,27 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
             continue
         try:
             if has_gif:
-                await bot.send_animation(
-                    chat_id=uid,
-                    animation=FSInputFile(config.NOTIF_GIF_PATH),
-                    caption=text,
-                    parse_mode="HTML",
-                    reply_markup=kb,
-                )
+                media_input = _cached_notif_file_id or FSInputFile(config.NOTIF_GIF_PATH)
+                try:
+                    sent = await bot.send_animation(
+                        chat_id=uid,
+                        animation=media_input,
+                        caption=text,
+                        parse_mode="HTML",
+                        reply_markup=kb,
+                    )
+                    if sent.animation:
+                        _cached_notif_file_id = sent.animation.file_id
+                except Exception:
+                    sent = await bot.send_animation(
+                        chat_id=uid,
+                        animation=FSInputFile(config.NOTIF_GIF_PATH),
+                        caption=text,
+                        parse_mode="HTML",
+                        reply_markup=kb,
+                    )
+                    if sent.animation:
+                        _cached_notif_file_id = sent.animation.file_id
             else:
                 await bot.send_message(
                     chat_id=uid,
