@@ -1,10 +1,11 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile, InputMediaAnimation
 from aiogram.filters import CommandStart
 
 from bot.emoji import E, em, title
 from bot.keyboards import main_menu_kb
 from database import repository
+import config
 
 router = Router()
 
@@ -29,13 +30,55 @@ async def cmd_start(message: Message) -> None:
         first_name=user.first_name,
     )
 
-    await message.answer(get_main_menu_text(), reply_markup=main_menu_kb(), parse_mode="HTML")
+    caption = get_main_menu_text()
+    if config.MENU_GIF_PATH.exists():
+        media = FSInputFile(config.MENU_GIF_PATH)
+        await message.answer_animation(
+            animation=media,
+            caption=caption,
+            reply_markup=main_menu_kb(),
+            parse_mode="HTML",
+        )
+    else:
+        await message.answer(caption, reply_markup=main_menu_kb(), parse_mode="HTML")
 
 @router.callback_query(F.data == "menu")
 async def cb_menu(call: CallbackQuery) -> None:
     try:
-        if call.message:
-            await call.message.edit_text(get_main_menu_text(), reply_markup=main_menu_kb(), parse_mode="HTML")
+        if not call.message:
+            return
+        caption = get_main_menu_text()
+
+        # Если сообщение уже с анимацией/медиа, обновляем подпись или медиа
+        if call.message.animation or call.message.photo or call.message.video:
+            if config.MENU_GIF_PATH.exists():
+                media = InputMediaAnimation(
+                    media=FSInputFile(config.MENU_GIF_PATH),
+                    caption=caption,
+                    parse_mode="HTML",
+                )
+                try:
+                    await call.message.edit_media(media=media, reply_markup=main_menu_kb())
+                    return
+                except Exception:
+                    pass
+            await call.message.edit_caption(caption=caption, reply_markup=main_menu_kb(), parse_mode="HTML")
+        else:
+            # Если предыдущее сообщение было чисто текстовым (например, из ленты), отправляем новое меню с гифкой и удаляем старое
+            if config.MENU_GIF_PATH.exists():
+                try:
+                    await call.message.delete()
+                except Exception:
+                    pass
+                media = FSInputFile(config.MENU_GIF_PATH)
+                await call.message.answer_animation(
+                    animation=media,
+                    caption=caption,
+                    reply_markup=main_menu_kb(),
+                    parse_mode="HTML",
+                )
+            else:
+                await call.message.edit_text(caption, reply_markup=main_menu_kb(), parse_mode="HTML")
     finally:
         await call.answer()
 
@@ -59,7 +102,10 @@ async def cb_stats(call: CallbackQuery) -> None:
             f"{em(E.MEDIA)} Видеомонтаж: <b>{video_count}</b>"
         )
         if call.message:
-            await call.message.edit_text(text, reply_markup=main_menu_kb(), parse_mode="HTML")
+            if call.message.animation or call.message.photo or call.message.video:
+                await call.message.edit_caption(caption=text, reply_markup=main_menu_kb(), parse_mode="HTML")
+            else:
+                await call.message.edit_text(text, reply_markup=main_menu_kb(), parse_mode="HTML")
     finally:
         await call.answer()
 

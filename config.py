@@ -18,3 +18,6 @@ DATABASE_PATH: str = str(BASE_DIR / os.getenv("DATABASE_PATH", "freelance_orders
 SESSION_NAME: str = str(BASE_DIR / "userbot_session")
 TELEGRAM_PROXY: str = os.getenv("TELEGRAM_PROXY", "").strip()
 
+ASSETS_DIR: Path = BASE_DIR / "assets"
+MENU_GIF_PATH: Path = ASSETS_DIR / "menu.gif"
+NOTIF_GIF_PATH: Path = ASSETS_DIR / "notification.gif"
