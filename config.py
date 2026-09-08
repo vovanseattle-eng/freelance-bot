@@ -21,3 +21,28 @@ TELEGRAM_PROXY: str = os.getenv("TELEGRAM_PROXY", "").strip()
 ASSETS_DIR: Path = BASE_DIR / "assets"
 MENU_GIF_PATH: Path = ASSETS_DIR / "menu.gif"
 NOTIF_GIF_PATH: Path = ASSETS_DIR / "notification.gif"
+CACHE_FILE: Path = ASSETS_DIR / "file_ids.json"
+
+def get_cached_file_id(key: str) -> str | None:
+    if CACHE_FILE.exists():
+        try:
+            import json
+            data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            return data.get(key)
+        except Exception:
+            pass
+    return None
+
+def save_cached_file_id(key: str, file_id: str) -> None:
+    try:
+        import json
+        data = {}
+        if CACHE_FILE.exists():
+            try:
+                data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        data[key] = file_id
+        CACHE_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass

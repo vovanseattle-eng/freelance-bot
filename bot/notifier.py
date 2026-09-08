@@ -11,11 +11,8 @@ import config
 
 logger = logging.getLogger(__name__)
 
-_cached_notif_file_id = None
-
 async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> None:
     """Рассылает карточку нового заказа подписчикам категории с анимированной GIF-шапкой."""
-    global _cached_notif_file_id
     user_ids = await repository.get_subscribed_users(order.category)
     if not user_ids:
         return
@@ -45,13 +42,14 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
     kb = push_order_kb(order.link, contact=order.contact)
 
     has_gif = config.NOTIF_GIF_PATH.exists()
+    cached_notif_id = config.get_cached_file_id("notification")
 
     for uid in user_ids:
         if await repository.is_delivered(order_id, uid):
             continue
         try:
             if has_gif:
-                media_input = _cached_notif_file_id or FSInputFile(config.NOTIF_GIF_PATH)
+                media_input = cached_notif_id or FSInputFile(config.NOTIF_GIF_PATH)
                 try:
                     sent = await bot.send_animation(
                         chat_id=uid,
@@ -60,8 +58,9 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
                         parse_mode="HTML",
                         reply_markup=kb,
                     )
-                    if sent.animation:
-                        _cached_notif_file_id = sent.animation.file_id
+                    if sent.animation and not cached_notif_id:
+                        cached_notif_id = sent.animation.file_id
+                        config.save_cached_file_id("notification", cached_notif_id)
                 except Exception:
                     sent = await bot.send_animation(
                         chat_id=uid,
@@ -71,7 +70,8 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
                         reply_markup=kb,
                     )
                     if sent.animation:
-                        _cached_notif_file_id = sent.animation.file_id
+                        cached_notif_id = sent.animation.file_id
+                        config.save_cached_file_id("notification", cached_notif_id)
             else:
                 await bot.send_message(
                     chat_id=uid,

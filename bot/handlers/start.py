@@ -18,11 +18,8 @@ def get_main_menu_text() -> str:
         f"{em(E.PROFILE)} Прямые контакты заказчиков для быстрого отклика."
     )
 
-_cached_menu_file_id = None
-
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    global _cached_menu_file_id
     user = message.from_user
     if not user:
         return
@@ -35,7 +32,8 @@ async def cmd_start(message: Message) -> None:
 
     caption = get_main_menu_text()
     if config.MENU_GIF_PATH.exists():
-        media_input = _cached_menu_file_id or FSInputFile(config.MENU_GIF_PATH)
+        cached_id = config.get_cached_file_id("menu")
+        media_input = cached_id or FSInputFile(config.MENU_GIF_PATH)
         try:
             sent = await message.answer_animation(
                 animation=media_input,
@@ -43,8 +41,8 @@ async def cmd_start(message: Message) -> None:
                 reply_markup=main_menu_kb(),
                 parse_mode="HTML",
             )
-            if sent.animation:
-                _cached_menu_file_id = sent.animation.file_id
+            if sent.animation and not cached_id:
+                config.save_cached_file_id("menu", sent.animation.file_id)
         except Exception:
             sent = await message.answer_animation(
                 animation=FSInputFile(config.MENU_GIF_PATH),
@@ -53,22 +51,22 @@ async def cmd_start(message: Message) -> None:
                 parse_mode="HTML",
             )
             if sent.animation:
-                _cached_menu_file_id = sent.animation.file_id
+                config.save_cached_file_id("menu", sent.animation.file_id)
     else:
         await message.answer(caption, reply_markup=main_menu_kb(), parse_mode="HTML")
 
 @router.callback_query(F.data == "menu")
 async def cb_menu(call: CallbackQuery) -> None:
-    global _cached_menu_file_id
     try:
         if not call.message:
             return
         caption = get_main_menu_text()
+        cached_id = config.get_cached_file_id("menu")
 
         # Если сообщение уже с анимацией/медиа, обновляем подпись или медиа
         if call.message.animation or call.message.photo or call.message.video:
             if config.MENU_GIF_PATH.exists():
-                media_input = _cached_menu_file_id or FSInputFile(config.MENU_GIF_PATH)
+                media_input = cached_id or FSInputFile(config.MENU_GIF_PATH)
                 media = InputMediaAnimation(
                     media=media_input,
                     caption=caption,
@@ -87,15 +85,15 @@ async def cb_menu(call: CallbackQuery) -> None:
                     await call.message.delete()
                 except Exception:
                     pass
-                media_input = _cached_menu_file_id or FSInputFile(config.MENU_GIF_PATH)
+                media_input = cached_id or FSInputFile(config.MENU_GIF_PATH)
                 sent = await call.message.answer_animation(
                     animation=media_input,
                     caption=caption,
                     reply_markup=main_menu_kb(),
                     parse_mode="HTML",
                 )
-                if sent.animation:
-                    _cached_menu_file_id = sent.animation.file_id
+                if sent.animation and not cached_id:
+                    config.save_cached_file_id("menu", sent.animation.file_id)
             else:
                 await call.message.edit_text(caption, reply_markup=main_menu_kb(), parse_mode="HTML")
     finally:
