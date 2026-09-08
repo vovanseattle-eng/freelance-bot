@@ -73,6 +73,12 @@ async def main() -> None:
         logger.error("BOT_TOKEN не указан в .env! Завершение работы.")
         return
 
+    dp = Dispatcher()
+    dp.include_router(start.router)
+    dp.include_router(feed.router)
+    dp.include_router(settings.router)
+    dp.include_router(search.router)
+
     logger.info("IT Фриланс-агрегатор успешно запущен!")
 
     while True:
@@ -100,12 +106,6 @@ async def main() -> None:
             session=session,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         )
-        dp = Dispatcher()
-
-        dp.include_router(start.router)
-        dp.include_router(feed.router)
-        dp.include_router(settings.router)
-        dp.include_router(search.router)
 
         collector = asyncio.create_task(orders_collector_worker(bot))
         try:
