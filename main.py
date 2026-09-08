@@ -73,40 +73,55 @@ async def main() -> None:
         logger.error("BOT_TOKEN не указан в .env! Завершение работы.")
         return
 
-    proxy_url = None
-    if config.TELEGRAM_PROXY:
-        try:
-            import socket
-            from urllib.parse import urlparse
-            p = urlparse(config.TELEGRAM_PROXY)
-            host = p.hostname or "127.0.0.1"
-            port = p.port or 10809
-            with socket.create_connection((host, port), timeout=1.5):
-                proxy_url = config.TELEGRAM_PROXY
-                logger.info(f"Используется прокси для Telegram: {proxy_url}")
-        except Exception:
-            logger.warning(f"Прокси {config.TELEGRAM_PROXY} недоступен. Попытка прямого подключения...")
-
-    session = AiohttpSession(proxy=proxy_url) if proxy_url else None
-    bot = Bot(
-        token=config.BOT_TOKEN,
-        session=session,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
-    dp = Dispatcher()
-
-    dp.include_router(start.router)
-    dp.include_router(feed.router)
-    dp.include_router(settings.router)
-    dp.include_router(search.router)
-
-    tasks = [
-        asyncio.create_task(dp.start_polling(bot)),
-        asyncio.create_task(orders_collector_worker(bot)),
-    ]
-
     logger.info("IT Фриланс-агрегатор успешно запущен!")
-    await asyncio.gather(*tasks)
+
+    while True:
+        proxy_url = None
+        if config.TELEGRAM_PROXY:
+            try:
+                import socket
+                from urllib.parse import urlparse
+                p = urlparse(config.TELEGRAM_PROXY)
+                host = p.hostname or "127.0.0.1"
+                port = p.port or 10809
+                with socket.create_connection((host, port), timeout=1.5):
+                    proxy_url = config.TELEGRAM_PROXY
+            except Exception:
+                pass
+
+        if proxy_url:
+            logger.info(f"Подключение через прокси: {proxy_url}")
+        else:
+            logger.info("Прокси 10809 не отвечает, попытка прямого подключения...")
+
+        session = AiohttpSession(proxy=proxy_url) if proxy_url else None
+        bot = Bot(
+            token=config.BOT_TOKEN,
+            session=session,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
+        dp = Dispatcher()
+
+        dp.include_router(start.router)
+        dp.include_router(feed.router)
+        dp.include_router(settings.router)
+        dp.include_router(search.router)
+
+        collector = asyncio.create_task(orders_collector_worker(bot))
+        try:
+            await dp.start_polling(bot)
+        except (KeyboardInterrupt, SystemExit):
+            collector.cancel()
+            await bot.session.close()
+            break
+        except Exception as e:
+            logger.warning(f"Ошибка соединения с Telegram ({type(e).__name__}: {e}). Переподключение через 5 сек...")
+            collector.cancel()
+            try:
+                await bot.session.close()
+            except Exception:
+                pass
+            await asyncio.sleep(5)
 
 if __name__ == "__main__":
     try:
