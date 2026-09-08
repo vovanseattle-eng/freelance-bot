@@ -73,7 +73,21 @@ async def main() -> None:
         logger.error("BOT_TOKEN не указан в .env! Завершение работы.")
         return
 
-    session = AiohttpSession(proxy=config.TELEGRAM_PROXY) if config.TELEGRAM_PROXY else None
+    proxy_url = None
+    if config.TELEGRAM_PROXY:
+        try:
+            import socket
+            from urllib.parse import urlparse
+            p = urlparse(config.TELEGRAM_PROXY)
+            host = p.hostname or "127.0.0.1"
+            port = p.port or 10809
+            with socket.create_connection((host, port), timeout=1.5):
+                proxy_url = config.TELEGRAM_PROXY
+                logger.info(f"Используется прокси для Telegram: {proxy_url}")
+        except Exception:
+            logger.warning(f"Прокси {config.TELEGRAM_PROXY} недоступен. Попытка прямого подключения...")
+
+    session = AiohttpSession(proxy=proxy_url) if proxy_url else None
     bot = Bot(
         token=config.BOT_TOKEN,
         session=session,
