@@ -11,9 +11,9 @@ from parsers.deduplicator import generate_hash
 
 logger = logging.getLogger(__name__)
 
-# Расширенный список проверенных IT и Digital каналов с прямыми контактами заказчиков
+# База из 50 проверенных активных IT и фриланс Telegram-каналов
 TARGET_CHANNELS = [
-    # Разработка и IT (Web, Backend, Frontend, QA, Mobile)
+    # Разработка и IT (Web, Backend, Frontend, QA, Mobile, Data Science, Gamedev)
     "it_vacancies",
     "tproger_jobs",
     "forwebdev",
@@ -32,22 +32,31 @@ TARGET_CHANNELS = [
     "it_vakansii_jobs",
     "remote_it_jobs",
     "remoteit",
+    "proglib_jobs",
+    "startup_jobs",
+    "jobforjunior",
+    "gamedev_jobs",
+    "it_zakazy",
 
-    # Дизайн и UI/UX
+    # Дизайн, UI/UX, Графика
     "design_jobs",
     "uiux_jobs",
     "designer_ru",
+    "designhunters",
+    "fl_design",
 
-    # Маркетинг, SMM, Трафик, SEO
+    # Маркетинг, SMM, Продукт, Трафик, SEO
     "smm_vacancies",
     "marketing_jobs",
     "seojobs",
     "product_jobs",
+    "tenchat_jobs",
+    "rabota_digital",
 
     # Копирайтинг и Тексты
     "text_jobs",
 
-    # Фриланс и удаленная работа с прямыми контактами
+    # Фриланс и удаленная работа с прямыми контактами заказчиков
     "freelancetaverna",
     "distantsiya",
     "forfreelancers",
@@ -58,6 +67,11 @@ TARGET_CHANNELS = [
     "remotejob",
     "freelance_rabota",
     "freelance_projects",
+    "zakazy_freelance",
+    "freelancechoice",
+    "freelancebazar",
+    "freelance_zakaz",
+    "freelance_feed",
 ]
 
 HEADERS = {
