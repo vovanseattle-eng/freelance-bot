@@ -7,6 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 BOT_TOKEN: str = os.getenv("BOT_TOKEN", "").strip()
+CHANNEL_USERNAME: str = os.getenv("CHANNEL_USERNAME", "vitnevoyte").lstrip("@")
+CHANNEL_URL: str = os.getenv("CHANNEL_URL", "https://t.me/vitnevoyte")
 
 TELEGRAM_API_ID_RAW = os.getenv("TELEGRAM_API_ID", "").strip()
 TELEGRAM_API_ID: int = int(TELEGRAM_API_ID_RAW) if TELEGRAM_API_ID_RAW.isdigit() else 0

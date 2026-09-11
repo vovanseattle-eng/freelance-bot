@@ -143,3 +143,13 @@ def push_order_kb(link: str, contact: Optional[str] = None) -> InlineKeyboardMar
     b.adjust(1)
     return b.as_markup()
 
+
+def get_subscription_kb(channel_url: str) -> InlineKeyboardMarkup:
+    """Клавиатура обязательной подписки на канал."""
+    b = InlineKeyboardBuilder()
+    b.button(text="Подписаться на канал", url=channel_url, icon_custom_emoji_id=E.LINK)
+    _b(b, "Проверить подписку", "check_subscription", E.CHECK, style=BLUE)
+    b.adjust(1, 1)
+    return b.as_markup()
+
+

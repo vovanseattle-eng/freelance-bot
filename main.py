@@ -22,6 +22,7 @@ from parsers.tg_web_scraper import fetch_all_channel_orders
 from parsers.base import ParsedOrder
 from bot.notifier import notify_subscribers
 from bot.handlers import start, feed, settings, search
+from bot.middlewares import SubscriptionMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -110,6 +111,8 @@ async def main() -> None:
     await start_health_server()
 
     dp = Dispatcher()
+    dp.message.outer_middleware(SubscriptionMiddleware())
+    dp.callback_query.outer_middleware(SubscriptionMiddleware())
     dp.include_router(start.router)
     dp.include_router(feed.router)
     dp.include_router(settings.router)

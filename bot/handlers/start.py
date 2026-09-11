@@ -196,3 +196,46 @@ async def cmd_stats(message: Message) -> None:
             pass
     await message.answer(text, reply_markup=main_menu_kb(), parse_mode="HTML")
 
+
+@router.callback_query(F.data == "check_subscription")
+async def cb_check_subscription(callback: CallbackQuery) -> None:
+    from bot.services.subscription import check_user_subscription, clear_user_subscription_cache
+
+    user_id = callback.from_user.id
+    clear_user_subscription_cache(user_id)
+
+    if not callback.bot:
+        return
+
+    is_sub = await check_user_subscription(callback.bot, user_id)
+    if is_sub:
+        await callback.answer("Подписка подтверждена!", show_alert=False)
+        caption = await get_main_menu_text()
+        cached_id = config.get_cached_file_id("menu")
+        if callback.message:
+            if (callback.message.animation or callback.message.photo or callback.message.video) and cached_id:
+                try:
+                    await callback.message.edit_media(
+                        media=InputMediaAnimation(media=cached_id, caption=caption, parse_mode="HTML"),
+                        reply_markup=main_menu_kb(),
+                    )
+                    return
+                except Exception:
+                    pass
+            try:
+                await callback.message.edit_caption(caption=caption, reply_markup=main_menu_kb(), parse_mode="HTML")
+                return
+            except Exception:
+                pass
+            try:
+                await callback.message.edit_text(text=caption, reply_markup=main_menu_kb(), parse_mode="HTML")
+                return
+            except Exception:
+                pass
+    else:
+        await callback.answer(
+            f"Вы пока не подписались на @{config.CHANNEL_USERNAME}! Пожалуйста, перейдите в канал и нажмите «Подписаться».",
+            show_alert=True,
+        )
+
+
