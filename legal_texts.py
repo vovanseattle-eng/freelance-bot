@@ -1,6 +1,7 @@
 from bot.emoji import E, em, title
 
 CURRENT_DOC_VERSION = "1.0"
+TERMS_URL = "https://telegra.ph/Polzovatelskoe-soglashenie--FREELANCE-RADAR-09-12"
 
 UNIFIED_GATE_SCREEN = (
     f"{title(E.FIRE, 'FREELANCE RADAR · АГРЕГАТОР')}\n\n"
