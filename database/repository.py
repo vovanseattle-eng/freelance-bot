@@ -172,3 +172,24 @@ async def mark_delivered(order_id: int, user_id: int) -> None:
             (order_id, user_id),
         )
         await db.commit()
+
+
+async def is_terms_accepted(user_id: int) -> bool:
+    """Проверяет принятие условий сервиса пользователем."""
+    async with get_connection() as db:
+        cursor = await db.execute(
+            "SELECT 1 FROM terms_acceptances WHERE user_id = ?",
+            (user_id,),
+        )
+        return await cursor.fetchone() is not None
+
+
+async def record_terms_acceptance(user_id: int) -> None:
+    """Сохраняет факт принятия условий сервиса."""
+    async with get_connection() as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO terms_acceptances (user_id) VALUES (?)",
+            (user_id,),
+        )
+        await db.commit()
+

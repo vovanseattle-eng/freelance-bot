@@ -33,7 +33,13 @@ CREATE TABLE IF NOT EXISTS order_deliveries (
     PRIMARY KEY (order_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS terms_acceptances (
+    user_id INTEGER PRIMARY KEY,
+    accepted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_category ON orders(category);
+
 CREATE INDEX IF NOT EXISTS idx_orders_hash ON orders(hash);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
 """

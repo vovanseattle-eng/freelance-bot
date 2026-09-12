@@ -17,9 +17,20 @@ class SubscriptionMiddleware(BaseMiddleware):
         if not user or user.is_bot:
             return await handler(event, data)
 
-        # Разрешаем нажатие на кнопку «Проверить подписку»
-        if isinstance(event, CallbackQuery) and event.data == "check_subscription":
+        # 1. Разрешаем события онбординга и правовой информации
+        if isinstance(event, CallbackQuery) and event.data in (
+            "check_subscription",
+            "action:accept_gate",
+            "legal:terms",
+            "gate:back",
+        ):
             return await handler(event, data)
+
+        raw_text = getattr(event, "text", None)
+        if raw_text:
+            cmd = raw_text.split()[0].split("@")[0].lower()
+            if cmd in ("/terms", "/help"):
+                return await handler(event, data)
 
         bot = data.get("bot")
         if not bot:
@@ -29,8 +40,12 @@ class SubscriptionMiddleware(BaseMiddleware):
         if is_sub:
             return await handler(event, data)
 
-        text = format_subscription_required_text(config.CHANNEL_USERNAME)
-        kb = get_subscription_kb(config.CHANNEL_URL)
+        from legal_texts import UNIFIED_GATE_SCREEN
+        from bot.keyboards import get_unified_gate_kb
+
+        text = UNIFIED_GATE_SCREEN
+        kb = get_unified_gate_kb(config.CHANNEL_URL)
+
 
         if isinstance(event, CallbackQuery):
             await event.answer("Для использования бота необходимо подписаться на канал!", show_alert=True)

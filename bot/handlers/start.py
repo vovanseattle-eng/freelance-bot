@@ -42,7 +42,19 @@ async def cmd_start(message: Message) -> None:
         first_name=user.first_name,
     )
 
-    caption = await get_main_menu_text()
+    from bot.services.subscription import check_user_subscription
+    is_sub = await check_user_subscription(message.bot, user.id)
+    accepted = await repository.is_terms_accepted(user.id)
+
+    if not is_sub or not accepted:
+        from legal_texts import UNIFIED_GATE_SCREEN
+        from bot.keyboards import get_unified_gate_kb
+        caption = UNIFIED_GATE_SCREEN
+        kb = get_unified_gate_kb(config.CHANNEL_URL)
+    else:
+        caption = await get_main_menu_text()
+        kb = main_menu_kb()
+
     if config.MENU_GIF_PATH.exists():
         cached_id = config.get_cached_file_id("menu")
         media_input = cached_id or FSInputFile(config.MENU_GIF_PATH)
@@ -50,7 +62,7 @@ async def cmd_start(message: Message) -> None:
             sent = await message.answer_animation(
                 animation=media_input,
                 caption=caption,
-                reply_markup=main_menu_kb(),
+                reply_markup=kb,
                 parse_mode="HTML",
             )
             if sent.animation and not cached_id:
@@ -59,13 +71,14 @@ async def cmd_start(message: Message) -> None:
             sent = await message.answer_animation(
                 animation=FSInputFile(config.MENU_GIF_PATH),
                 caption=caption,
-                reply_markup=main_menu_kb(),
+                reply_markup=kb,
                 parse_mode="HTML",
             )
             if sent.animation:
                 config.save_cached_file_id("menu", sent.animation.file_id)
     else:
-        await message.answer(caption, reply_markup=main_menu_kb(), parse_mode="HTML")
+        await message.answer(caption, reply_markup=kb, parse_mode="HTML")
+
 
 @router.callback_query(F.data == "menu")
 async def cb_menu(call: CallbackQuery) -> None:
@@ -197,8 +210,8 @@ async def cmd_stats(message: Message) -> None:
     await message.answer(text, reply_markup=main_menu_kb(), parse_mode="HTML")
 
 
-@router.callback_query(F.data == "check_subscription")
-async def cb_check_subscription(callback: CallbackQuery) -> None:
+@router.callback_query(F.data.in_({"action:accept_gate", "check_subscription"}))
+async def cb_accept_gate(callback: CallbackQuery) -> None:
     from bot.services.subscription import check_user_subscription, clear_user_subscription_cache
 
     user_id = callback.from_user.id
@@ -209,7 +222,8 @@ async def cb_check_subscription(callback: CallbackQuery) -> None:
 
     is_sub = await check_user_subscription(callback.bot, user_id)
     if is_sub:
-        await callback.answer("Подписка подтверждена!", show_alert=False)
+        await repository.record_terms_acceptance(user_id)
+        await callback.answer("Подписка подтверждена, доступ открыт!", show_alert=False)
         caption = await get_main_menu_text()
         cached_id = config.get_cached_file_id("menu")
         if callback.message:
@@ -234,8 +248,37 @@ async def cb_check_subscription(callback: CallbackQuery) -> None:
                 pass
     else:
         await callback.answer(
-            f"Вы пока не подписались на @{config.CHANNEL_USERNAME}! Пожалуйста, перейдите в канал и нажмите «Подписаться».",
+            f"Для доступа к боту необходимо подписаться на наш канал @{config.CHANNEL_USERNAME}!",
             show_alert=True,
         )
+
+
+@router.message(Command("terms"))
+@router.callback_query(F.data == "legal:terms")
+async def show_terms(event: Message | CallbackQuery) -> None:
+    from legal_texts import TERMS_TEXT
+    from bot.keyboards import get_terms_doc_kb
+    if isinstance(event, CallbackQuery):
+        if event.message:
+            try:
+                await event.message.edit_caption(caption=TERMS_TEXT, reply_markup=get_terms_doc_kb(), parse_mode="HTML")
+            except Exception:
+                await event.message.edit_text(text=TERMS_TEXT, reply_markup=get_terms_doc_kb(), parse_mode="HTML")
+        await event.answer()
+    else:
+        await event.answer(text=TERMS_TEXT, reply_markup=get_terms_doc_kb(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "gate:back")
+async def cb_gate_back(callback: CallbackQuery) -> None:
+    from legal_texts import UNIFIED_GATE_SCREEN
+    from bot.keyboards import get_unified_gate_kb
+    if callback.message:
+        try:
+            await callback.message.edit_caption(caption=UNIFIED_GATE_SCREEN, reply_markup=get_unified_gate_kb(config.CHANNEL_URL), parse_mode="HTML")
+        except Exception:
+            await callback.message.edit_text(text=UNIFIED_GATE_SCREEN, reply_markup=get_unified_gate_kb(config.CHANNEL_URL), parse_mode="HTML")
+    await callback.answer()
+
 
 
