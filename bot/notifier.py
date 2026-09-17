@@ -11,7 +11,7 @@ import config
 
 logger = logging.getLogger(__name__)
 
-async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> None:
+async def notify_subscribers(bot: Bot, order: ParsedOrder) -> None:
     """Рассылает карточку нового заказа подписчикам категории с анимированной GIF-шапкой."""
     user_ids = await repository.get_subscribed_users(order.category)
     if not user_ids:
@@ -45,8 +45,6 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
     cached_notif_id = config.get_cached_file_id("notification")
 
     for uid in user_ids:
-        if await repository.is_delivered(order_id, uid):
-            continue
         try:
             if has_gif:
                 media_input = cached_notif_id or FSInputFile(config.NOTIF_GIF_PATH)
@@ -80,6 +78,5 @@ async def notify_subscribers(bot: Bot, order: ParsedOrder, order_id: int) -> Non
                     reply_markup=kb,
                     disable_web_page_preview=True,
                 )
-            await repository.mark_delivered(order_id, uid)
         except Exception as e:
             logger.debug(f"Не удалось отправить пуш пользователю {uid}: {e}")

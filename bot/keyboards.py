@@ -39,11 +39,8 @@ def _back(builder: InlineKeyboardBuilder, data: str = "menu") -> None:
 
 def main_menu_kb() -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
-    _b(b, "Лента заказов", "feed_menu", E.FIRE, style=BLUE)
-    _b(b, "Поиск", "search_prompt", E.SEARCH, style=BLUE)
-    _b(b, "Уведомления", "settings", E.BELL)
-    _b(b, "Статистика", "stats", E.STATS)
-    b.adjust(1, 1, 2)
+    _b(b, "Настройка уведомлений", "settings", E.BELL, style=BLUE)
+    b.adjust(1)
     return b.as_markup()
 
 

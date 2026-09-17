@@ -16,12 +16,12 @@ from aiogram.types import BotCommand, BotCommandScopeDefault, MenuButtonCommands
 
 import config
 from database.db import init_db
-from database import repository
 from parsers.rss_boards import fetch_all_rss_orders
 from parsers.tg_web_scraper import fetch_all_channel_orders
 from parsers.base import ParsedOrder
+from parsers.deduplicator import SeenOrdersCache
 from bot.notifier import notify_subscribers
-from bot.handlers import start, feed, settings, search
+from bot.handlers import start, settings
 from bot.middlewares import SubscriptionMiddleware
 
 logging.basicConfig(
@@ -31,23 +31,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("freelance_aggregator")
 
+# Легковесный кольцевой кэш последних 2000 хэшей в RAM (~150 КБ) — защита от дубликатов и утечек памяти
+seen_orders = SeenOrdersCache(max_size=2000)
+
 async def process_new_order(bot: Bot, order: ParsedOrder) -> None:
-    """Сохраняет IT-заказ в базу и отправляет пуш подписчикам при успехе."""
-    order_id = await repository.save_order(
-        source=order.source,
-        title=order.title,
-        link=order.link,
-        category=order.category,
-        content_hash=order.content_hash,
-        external_id=order.external_id,
-        description=order.description,
-        budget=order.budget,
-        contact=order.contact,
-    )
-    if order_id:
+    """Мгновенно отправляет пуш подписчикам при появлении нового уникального IT-заказа."""
+    if seen_orders.is_new(order.content_hash):
         contact_info = f" [Контакт: @{order.contact}]" if order.contact else ""
         logger.info(f"Новая вакансия [{order.category}] из {order.source}: {order.title[:45]}{contact_info}")
-        await notify_subscribers(bot, order, order_id)
+        await notify_subscribers(bot, order)
 
 async def orders_collector_worker(bot: Bot) -> None:
     """Фоновый сбор вакансий только по IT из бирж и Telegram-каналов."""
@@ -71,10 +63,7 @@ async def set_bot_commands(bot: Bot) -> None:
     """Устанавливает системные команды и кнопку Меню у поля ввода."""
     commands = [
         BotCommand(command="start", description="Главное меню"),
-        BotCommand(command="search", description="Поиск IT-заказов"),
-        BotCommand(command="feed", description="Лента по категориям"),
         BotCommand(command="settings", description="Фильтры и уведомления"),
-        BotCommand(command="stats", description="Статистика базы"),
     ]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
@@ -114,9 +103,7 @@ async def main() -> None:
     dp.message.outer_middleware(SubscriptionMiddleware())
     dp.callback_query.outer_middleware(SubscriptionMiddleware())
     dp.include_router(start.router)
-    dp.include_router(feed.router)
     dp.include_router(settings.router)
-    dp.include_router(search.router)
 
     logger.info("IT Фриланс-агрегатор успешно запущен!")
 

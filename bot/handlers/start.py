@@ -11,22 +11,17 @@ router = Router()
 
 async def get_main_menu_text() -> str:
     """Единый стильный текст главного экрана с блочным выделением blockquote."""
-    total_orders = await repository.count_orders()
     return (
         f"{em(E.FIRE)} <b>FREELANCE RADAR · IT ORDERS</b>\n"
-        f"<i>Мониторинг 50+ бирж и каналов в реальном времени</i>\n\n"
-        f"<b>Быстрый поиск заказов:</b>\n"
-        f"<blockquote>"
-        f"Отправьте любое ключевое слово в чат.\n"
-        f"Например: <code>Python</code>, <code>Бот</code>, <code>Figma</code>, <code>Reels</code>, <code>Тильда</code>"
-        f"</blockquote>\n\n"
+        f"<i>Мгновенные уведомления о свежих IT-заказах и вакансиях</i>\n\n"
         f"<b>Параметры агрегатора:</b>\n"
         f"<blockquote>"
-        f"{em(E.STATS)} <b>База:</b> <code>{total_orders} заказов</code>\n"
+        f"{em(E.LIGHTNING)} <b>Мониторинг:</b> <code>50+ бирж и каналов 24/7</code>\n"
         f"{em(E.CHECK)} <b>Фильтр:</b> <code>Только IT / Digital</code>\n"
         f"{em(E.PROFILE)} <b>Контакты:</b> <code>Прямой отклик заказчику</code>\n"
-        f"{em(E.LIGHTNING)} <b>Мониторинг:</b> <code>24/7 в реальном времени</code>"
-        f"</blockquote>"
+        f"{em(E.BELL)} <b>Уведомления:</b> <code>Мгновенный пуш в чат</code>"
+        f"</blockquote>\n\n"
+        f"<i>Нажмите кнопку «Настройка уведомлений» ниже, чтобы выбрать интересующие вас направления.</i>"
     )
 
 @router.message(CommandStart())
