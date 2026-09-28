@@ -20,8 +20,7 @@ CREATE TABLE IF NOT EXISTS terms_acceptances (
 
 async def init_db() -> None:
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.create_function("py_lower", 1, lambda s: s.lower() if s else "")
-        # Очистка устаревших таблиц заказов для освобождения памяти и диска
+        # Очистка устаревших таблиц заказов (наследие старой версии) — освобождает место на диске
         await db.execute("DROP TABLE IF EXISTS order_deliveries;")
         await db.execute("DROP TABLE IF EXISTS orders;")
         await db.executescript(INIT_SQL)
@@ -34,5 +33,4 @@ async def init_db() -> None:
 @asynccontextmanager
 async def get_connection():
     async with aiosqlite.connect(DATABASE_PATH) as db:
-        await db.create_function("py_lower", 1, lambda s: s.lower() if s else "")
         yield db

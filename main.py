@@ -19,7 +19,7 @@ from database.db import init_db
 from parsers.rss_boards import fetch_all_rss_orders
 from parsers.tg_web_scraper import fetch_all_channel_orders
 from parsers.base import ParsedOrder
-from parsers.deduplicator import SeenOrdersCache
+from bot.state import seen_orders, register_order
 from bot.notifier import notify_subscribers
 from bot.handlers import start, settings
 from bot.middlewares import SubscriptionMiddleware
@@ -31,33 +31,43 @@ logging.basicConfig(
 )
 logger = logging.getLogger("freelance_aggregator")
 
-# Легковесный кольцевой кэш последних 2000 хэшей в RAM (~150 КБ) — защита от дубликатов и утечек памяти
-seen_orders = SeenOrdersCache(max_size=2000)
 
 async def process_new_order(bot: Bot, order: ParsedOrder) -> None:
     """Мгновенно отправляет пуш подписчикам при появлении нового уникального IT-заказа."""
     if seen_orders.is_new(order.content_hash):
+        register_order(order.category)
         contact_info = f" [Контакт: @{order.contact}]" if order.contact else ""
-        logger.info(f"Новая вакансия [{order.category}] из {order.source}: {order.title[:45]}{contact_info}")
+        logger.info(f"Новый заказ [{order.category}] из {order.source}: {order.title[:45]}{contact_info}")
         await notify_subscribers(bot, order)
 
+
 async def orders_collector_worker(bot: Bot) -> None:
-    """Фоновый сбор вакансий только по IT из бирж и Telegram-каналов."""
-    logger.info("Запущен сборщик IT вакансий (биржи + TG-каналы).")
+    """Фоновый сбор заказов только по IT из бирж и Telegram-каналов."""
+    logger.info("Запущен сборщик IT заказов (биржи + TG-каналы).")
     while True:
         try:
-            # 1. Биржи
-            rss_orders = await fetch_all_rss_orders()
+            # 1. Биржи (RSS)
+            rss_orders = await await_with_timeout(fetch_all_rss_orders(), 60, "rss_boards")
             for ord_item in rss_orders:
                 await process_new_order(bot, ord_item)
 
             # 2. Специализированные Telegram-каналы
-            tg_orders = await fetch_all_channel_orders()
+            tg_orders = await await_with_timeout(fetch_all_channel_orders(), 90, "tg_web_scraper")
             for ord_item in tg_orders:
                 await process_new_order(bot, ord_item)
         except Exception as e:
             logger.error(f"Ошибка в цикле сборщика: {e}")
         await asyncio.sleep(config.RSS_POLL_INTERVAL)
+
+
+async def await_with_timeout(coro, timeout: float, name: str):
+    """Обёртка с таймаутом: зависший источник не должен стопорить весь цикл сбора."""
+    try:
+        return await asyncio.wait_for(coro, timeout=timeout)
+    except asyncio.TimeoutError:
+        logger.warning(f"Сбор '{name}' не уложился в {timeout} c — пропуск до следующего цикла.")
+        return []
+
 
 async def set_bot_commands(bot: Bot) -> None:
     """Устанавливает системные команды и кнопку Меню у поля ввода."""
@@ -70,6 +80,7 @@ async def set_bot_commands(bot: Bot) -> None:
         await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
     except Exception as e:
         logger.warning(f"Не удалось установить команды бота: {e}")
+
 
 async def start_health_server() -> None:
     port_str = config.os.getenv("PORT")
@@ -88,6 +99,7 @@ async def start_health_server() -> None:
         logger.info(f"Render health-check HTTP сервер запущен на порту {port}")
     except Exception as e:
         logger.warning(f"Не удалось запустить health-check сервер: {e}")
+
 
 async def main() -> None:
     logger.info("Инициализация базы данных...")
@@ -150,6 +162,7 @@ async def main() -> None:
             except Exception:
                 pass
             await asyncio.sleep(5)
+
 
 if __name__ == "__main__":
     try:

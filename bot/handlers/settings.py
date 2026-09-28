@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InputMediaAnimation, FSInputFile
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 
 from bot.emoji import E, title

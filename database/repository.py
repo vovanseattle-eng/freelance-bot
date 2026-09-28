@@ -4,6 +4,7 @@ from database.db import get_connection
 
 VALID_IT_CATEGORIES = ("dev", "design", "smm", "copywriting", "video")
 
+
 async def upsert_user(user_id: int, username: Optional[str], first_name: Optional[str]) -> None:
     async with get_connection() as db:
         await db.execute(
@@ -18,17 +19,20 @@ async def upsert_user(user_id: int, username: Optional[str], first_name: Optiona
         )
         await db.commit()
 
+
 async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
     async with get_connection() as db:
         db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
         cursor = await db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         return await cursor.fetchone()
 
+
 async def update_user_categories(user_id: int, categories: List[str]) -> None:
     cat_str = ",".join(categories)
     async with get_connection() as db:
         await db.execute("UPDATE users SET categories = ? WHERE user_id = ?", (cat_str, user_id))
         await db.commit()
+
 
 async def toggle_notifications(user_id: int) -> bool:
     async with get_connection() as db:
@@ -39,7 +43,9 @@ async def toggle_notifications(user_id: int) -> bool:
         await db.commit()
         return bool(new_val)
 
+
 async def get_subscribed_users(category: str) -> List[int]:
+    """ID пользователей с включёнными уведомлениями по категории (или 'all')."""
     async with get_connection() as db:
         cursor = await db.execute(
             "SELECT user_id, categories FROM users WHERE notifications_enabled = 1"
@@ -72,3 +78,18 @@ async def record_terms_acceptance(user_id: int) -> None:
         )
         await db.commit()
 
+
+async def count_users() -> int:
+    """Общее число пользователей, стартовавших бота."""
+    async with get_connection() as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        row = await cursor.fetchone()
+        return int(row[0]) if row else 0
+
+
+async def count_notif_enabled() -> int:
+    """Число пользователей с включёнными уведомлениями."""
+    async with get_connection() as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users WHERE notifications_enabled = 1")
+        row = await cursor.fetchone()
+        return int(row[0]) if row else 0

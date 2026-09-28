@@ -4,6 +4,7 @@ from aiogram.filters import CommandStart, Command
 
 from bot.emoji import E, em, title
 from bot.keyboards import main_menu_kb
+from bot.state import get_stats, format_uptime
 from database import repository
 import config
 
@@ -120,24 +121,7 @@ async def cb_menu(call: CallbackQuery) -> None:
 @router.callback_query(F.data == "stats")
 async def cb_stats(call: CallbackQuery) -> None:
     try:
-        total_orders = await repository.count_orders()
-        dev_count = await repository.count_orders("dev")
-        design_count = await repository.count_orders("design")
-        smm_count = await repository.count_orders("smm")
-        copy_count = await repository.count_orders("copywriting")
-        video_count = await repository.count_orders("video")
-
-        text = (
-            f"{em(E.STATS)} <b>Статистика базы IT-заказов</b>\n\n"
-            f"<blockquote>"
-            f"{em(E.TOP)} <b>Всего предложений:</b> <code>{total_orders}</code>\n\n"
-            f"{em(E.CODE)} <b>Разработка:</b> <code>{dev_count}</code>\n"
-            f"{em(E.DESIGN)} <b>Дизайн:</b> <code>{design_count}</code>\n"
-            f"{em(E.SMM)} <b>Маркетинг / SMM:</b> <code>{smm_count}</code>\n"
-            f"{em(E.WRITE)} <b>Копирайтинг:</b> <code>{copy_count}</code>\n"
-            f"{em(E.MEDIA)} <b>Видеомонтаж:</b> <code>{video_count}</code>"
-            f"</blockquote>"
-        )
+        text = await build_stats_text()
         if not call.message:
             return
 
@@ -170,26 +154,33 @@ async def cb_stats(call: CallbackQuery) -> None:
     finally:
         await call.answer()
 
+
+async def build_stats_text() -> str:
+    """Живая статистика: аптайм и счётчики заказов в RAM + число пользователей из базы."""
+    stats = get_stats()
+    pc = stats["per_category"]
+    total_users = await repository.count_users()
+    notif_users = await repository.count_notif_enabled()
+    return (
+        f"{em(E.STATS)} <b>Статистика агрегатора</b>\n\n"
+        f"<blockquote>"
+        f"{em(E.TOP)} <b>Аптайм бота:</b> <code>{format_uptime(stats['uptime_seconds'])}</code>\n\n"
+        f"{em(E.FIRE)} <b>Новых заказов за аптайм:</b> <code>{stats['total_seen']}</code>\n\n"
+        f"{em(E.CODE)} <b>Разработка:</b> <code>{pc['dev']}</code>\n"
+        f"{em(E.DESIGN)} <b>Дизайн:</b> <code>{pc['design']}</code>\n"
+        f"{em(E.SMM)} <b>Маркетинг / SMM:</b> <code>{pc['smm']}</code>\n"
+        f"{em(E.WRITE)} <b>Копирайтинг:</b> <code>{pc['copywriting']}</code>\n"
+        f"{em(E.MEDIA)} <b>Видеомонтаж:</b> <code>{pc['video']}</code>\n\n"
+        f"{em(E.PROFILE)} <b>Пользователей:</b> <code>{total_users}</code>\n"
+        f"{em(E.BELL)} <b>С уведомлениями:</b> <code>{notif_users}</code>"
+        f"</blockquote>\n\n"
+        f"<i>Заказы не хранятся в базе — только мгновенные пуши подписчикам.</i>"
+    )
+
 @router.message(Command("stats"))
 async def cmd_stats(message: Message) -> None:
-    total_orders = await repository.count_orders()
-    dev_count = await repository.count_orders("dev")
-    design_count = await repository.count_orders("design")
-    smm_count = await repository.count_orders("smm")
-    copy_count = await repository.count_orders("copywriting")
-    video_count = await repository.count_orders("video")
+    text = await build_stats_text()
 
-    text = (
-        f"{em(E.STATS)} <b>Статистика базы IT-заказов</b>\n\n"
-        f"<blockquote>"
-        f"{em(E.TOP)} <b>Всего предложений:</b> <code>{total_orders}</code>\n\n"
-        f"{em(E.CODE)} <b>Разработка:</b> <code>{dev_count}</code>\n"
-        f"{em(E.DESIGN)} <b>Дизайн:</b> <code>{design_count}</code>\n"
-        f"{em(E.SMM)} <b>Маркетинг / SMM:</b> <code>{smm_count}</code>\n"
-        f"{em(E.WRITE)} <b>Копирайтинг:</b> <code>{copy_count}</code>\n"
-        f"{em(E.MEDIA)} <b>Видеомонтаж:</b> <code>{video_count}</code>"
-        f"</blockquote>"
-    )
     stats_id = config.get_cached_file_id("stats")
     if stats_id:
         try:

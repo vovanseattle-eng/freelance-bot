@@ -4,7 +4,7 @@ from aiogram.types import TelegramObject, Message, CallbackQuery, FSInputFile, I
 
 import config
 from bot.keyboards import get_subscription_kb
-from bot.services.subscription import check_user_subscription, format_subscription_required_text
+from bot.services.subscription import check_user_subscription
 
 logger = logging.getLogger(__name__)
 

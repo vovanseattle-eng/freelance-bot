@@ -142,7 +142,8 @@ def extract_post_data(text_el) -> tuple[str, str, str]:
 async def fetch_channel_posts(session: aiohttp.ClientSession, channel: str) -> List[ParsedOrder]:
     orders: List[ParsedOrder] = []
     url = f"https://t.me/s/{channel}"
-    proxy = config.TELEGRAM_PROXY or "http://127.0.0.1:10809"
+    # Прокси только если явно задан TELEGRAM_PROXY; иначе прямой запрос
+    proxy = (config.TELEGRAM_PROXY or None)
 
     try:
         async with session.get(url, headers=HEADERS, proxy=proxy, timeout=aiohttp.ClientTimeout(total=10)) as resp:

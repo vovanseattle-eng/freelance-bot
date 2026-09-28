@@ -2,7 +2,7 @@ import re
 from typing import Optional
 
 DEV_KEYWORDS = {
-    "python", "бот", "bot", "django", "fastapi", "flask", "aiogram", "telethon",
+    "python", "django", "fastapi", "flask", "aiogram", "telethon",
     "javascript", "typescript", "react", "vue", "node", "backend", "frontend",
     "html", "css", "сайт", "скрипт", "парсер", "парсинг", "база данных", "sql",
     "php", "laravel", "wordpress", "1c", "1с", "разработчик", "программист",
@@ -64,6 +64,11 @@ def is_it_job(title: str, text: str) -> bool:
             return False
             
     return True
+
+
+def is_spam(text: str) -> bool:
+    """Совместимая обёртка: True, если текст похож на офлайн-спам или не IT."""
+    return not is_it_job(text or "", "")
 
 def classify_text(title: str, text: str) -> Optional[str]:
     """Классифицирует текст только по IT-направлениям. Возвращает None, если вакансия не из IT."""
